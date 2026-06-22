@@ -94,6 +94,15 @@ type SummaryLine = {
   averageColorPercent: number;
   discount: number;
   lineTotal: number;
+  baseTotal: number;
+  extraTotal: number;
+  beforeDiscount: number;
+  bwTotal: number;
+  lightTotal: number;
+  mediumTotal: number;
+  fullColorTotal: number;
+  sideModeLabel: string;
+  needsPreparation: boolean;
   needsQuote: boolean;
 };
 
@@ -1084,6 +1093,15 @@ function buildSummaryLine(item: UploadedFileItem): SummaryLine {
     { bw: 0, light: 0, medium: 0, full: 0 }
   );
 
+  const tierTotals = countedPages.reduce(
+    (totals, pageNumber) => {
+      const info = getPageInfoForItem(item, pageNumber);
+      totals[info.tier] += getPagePriceForItem(item, pageNumber);
+      return totals;
+    },
+    { bw: 0, light: 0, medium: 0, full: 0 }
+  );
+
   const sheets =
     calculateSheets(basePages.length, item.config.sideMode) * copies +
     calculateSheets(extraPages.length, item.config.sideMode) * extraCopies;
@@ -1106,6 +1124,15 @@ function buildSummaryLine(item: UploadedFileItem): SummaryLine {
     averageColorPercent: item.analysis.averageColorPercent,
     discount,
     lineTotal: beforeDiscount - discount,
+    baseTotal,
+    extraTotal,
+    beforeDiscount,
+    bwTotal: tierTotals.bw,
+    lightTotal: tierTotals.light,
+    mediumTotal: tierTotals.medium,
+    fullColorTotal: tierTotals.full,
+    sideModeLabel: String(item.config.sideMode).replace(/_/g, " "),
+    needsPreparation: snowprintNeedsPreparation(item.file.name),
     needsQuote: item.config.serviceType === "specialty"
   };
 }
@@ -1502,12 +1529,63 @@ function SummaryBox({
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="break-words font-black text-snow-navy">{line.filename}</p>
-                <p className="mt-2 text-xs leading-5 text-snow-muted">
-                  Mode: {line.modeLabel}<br />
-                  Pages: {line.pageCount}<br />
-                  Billed pages: {line.billedPages}<br />
-                  Sheets: {line.sheets}
-                </p>
+                <div className="mt-3 space-y-2 text-xs leading-5 text-snow-muted">
+                  <p>
+                    <span className="font-black text-snow-navy">Mode:</span> {line.modeLabel}
+                  </p>
+
+                  <div className="rounded-2xl bg-snow-white p-3">
+                    <p className="font-black text-snow-navy">Computation</p>
+                    <p>{buildCopyPageBreakdown(line)}</p>
+                    <p>
+                      Sheets: {line.sheets} {pluralize(line.sheets, "sheet")} · {line.sideModeLabel}
+                    </p>
+                  </div>
+
+                  <div className="rounded-2xl bg-snow-white p-3">
+                    <p className="font-black text-snow-navy">Price breakdown</p>
+
+                    {line.bwPages > 0 && (
+                      <p>
+                        B/W: {line.bwPages} {pluralize(line.bwPages, "page")} × {formatRate(line.bwTotal, line.bwPages)} = {formatOrderPeso(line.bwTotal)}
+                      </p>
+                    )}
+
+                    {line.lightPages > 0 && (
+                      <p>
+                        Light color: {line.lightPages} {pluralize(line.lightPages, "page")} × {formatRate(line.lightTotal, line.lightPages)} = {formatOrderPeso(line.lightTotal)}
+                      </p>
+                    )}
+
+                    {line.mediumPages > 0 && (
+                      <p>
+                        Medium color: {line.mediumPages} {pluralize(line.mediumPages, "page")} × {formatRate(line.mediumTotal, line.mediumPages)} = {formatOrderPeso(line.mediumTotal)}
+                      </p>
+                    )}
+
+                    {line.fullColorPages > 0 && (
+                      <p>
+                        Full color: {line.fullColorPages} {pluralize(line.fullColorPages, "page")} × {formatRate(line.fullColorTotal, line.fullColorPages)} = {formatOrderPeso(line.fullColorTotal)}
+                      </p>
+                    )}
+
+                    {line.discount > 0 && (
+                      <p className="font-bold text-emerald-700">
+                        Bulk discount: -{formatOrderPeso(line.discount)}
+                      </p>
+                    )}
+
+                    <p className="mt-1 font-black text-snow-navy">
+                      Subtotal: {formatOrderPeso(line.lineTotal)}
+                    </p>
+                  </div>
+
+                  {line.needsPreparation && (
+                    <p className="rounded-2xl bg-amber-50 p-3 font-bold text-amber-800">
+                      Final price may adjust after conversion because SnowPrint will use the converted PDF page count for accurate pricing.
+                    </p>
+                  )}
+                </div>
               </div>
               <p className="shrink-0 text-lg font-black text-snow-navy">
                 ₱{line.lineTotal.toFixed(2)}
@@ -1563,6 +1641,31 @@ function SummaryBox({
       )}
     </section>
   );
+}
+
+
+function formatOrderPeso(value: number) {
+  return `₱${Number(value || 0).toFixed(2)}`;
+}
+
+function formatRate(total: number, count: number) {
+  if (!count) {
+    return "₱0.00";
+  }
+
+  return formatOrderPeso(total / count);
+}
+
+function pluralize(count: number, word: string) {
+  return count === 1 ? word : `${word}s`;
+}
+
+function buildCopyPageBreakdown(line: OrderSummary["lines"][number]) {
+  if (line.extraPageCount > 0) {
+    return `${line.copies} ${pluralize(line.copies, "copy")} × ${line.basePageCount} base ${pluralize(line.basePageCount, "page")} + ${line.extraCopies} extra ${pluralize(line.extraCopies, "copy")} × ${line.extraPageCount} extra ${pluralize(line.extraPageCount, "page")} = ${line.billedPages} billed ${pluralize(line.billedPages, "page")}`;
+  }
+
+  return `${line.copies} ${pluralize(line.copies, "copy")} × ${line.basePageCount} ${pluralize(line.basePageCount, "page")} = ${line.billedPages} billed ${pluralize(line.billedPages, "page")}`;
 }
 
 function Panel({

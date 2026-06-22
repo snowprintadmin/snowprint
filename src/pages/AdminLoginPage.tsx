@@ -23,7 +23,7 @@ export default function AdminLoginPage() {
 
     if (error || !data.user) {
       setIsLoading(false);
-      setErrorMessage("Invalid admin email or password.");
+      setErrorMessage(error?.message ?? "Invalid admin email or password.");
       return;
     }
 
