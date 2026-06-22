@@ -10,6 +10,7 @@ import PaymentThankYouPage from "./pages/PaymentThankYouPage";
 import PricingWaitingPage from "./pages/PricingWaitingPage";
 import AdminQueuePage from "./pages/AdminQueuePage";
 import PreparingFilesPage from "./pages/PreparingFilesPage";
+import AdminRoute from "./components/AdminRoute";
 
 export default function App() {
   return (
@@ -19,9 +20,9 @@ export default function App() {
         <Route path="/order" element={<CustomerOrderPage />} />
         <Route path="/track" element={<OrderTrackingPage />} />
         <Route path="/admin/login" element={<AdminLoginPage />} />
-        <Route path="/admin/orders" element={<AdminOrdersPage />} />
-        <Route path="/admin/queue" element={<AdminQueuePage />} />
-        <Route path="/admin/pricing" element={<AdminPricingPage />} />
+        <Route path="/admin/orders" element={<AdminRoute><AdminOrdersPage /></AdminRoute>} />
+        <Route path="/admin/queue" element={<AdminRoute><AdminQueuePage /></AdminRoute>} />
+        <Route path="/admin/pricing" element={<AdminRoute><AdminPricingPage /></AdminRoute>} />
         <Route path="/payment/:orderNumber" element={<PaymentPage />} />
         <Route path="/thank-you/:orderNumber" element={<PaymentThankYouPage />} />
         <Route path="/pricing-wait/:orderNumber" element={<PricingWaitingPage />} />
